@@ -9,10 +9,7 @@ export async function GET() {
     });
 
     if (count === 0) {
-      return NextResponse.json(
-        { message: "还没有任何公开的随笔" },
-        { status: 404 }
-      );
+      return NextResponse.json(null);
     }
 
     // 随机跳过若干条记录

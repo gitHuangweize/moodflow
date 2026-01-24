@@ -14,10 +14,13 @@ import {
   Heart,
   User,
   AlertTriangle,
-  Sparkles
+  Sparkles,
+  Stars,
+  LogOut
 } from "lucide-react";
 import Link from "next/link";
 import MeteorBackground from "@/components/ui/MeteorBackground";
+import { signOut } from "next-auth/react";
 
 interface Post {
   id: string;
@@ -30,11 +33,16 @@ interface Post {
   };
 }
 
+import AuthGuardModal from "@/components/ui/AuthGuardModal";
+import { useSession } from "next-auth/react";
+
 export default function ProfilePage() {
+  const { data: session } = useSession();
   const [mounted, setMounted] = useState(false);
   const [posts, setPosts] = useState<Post[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [exportFormat, setExportFormat] = useState<'md' | 'json' | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [user, setUser] = useState({
@@ -96,6 +104,13 @@ export default function ProfilePage() {
 
   const handleDelete = async () => {
     if (!deleteId) return;
+    
+    // 权限预检查
+    if (!session) {
+      setIsAuthModalOpen(true);
+      return;
+    }
+
     try {
       const res = await fetch(`/api/v1/posts/${deleteId}`, { method: "DELETE" });
       if (res.ok) {
@@ -142,13 +157,26 @@ export default function ProfilePage() {
           <ArrowLeft size={18} />
           <span className="text-sm font-medium">返回星空</span>
         </Link>
-        <button 
-          onClick={() => setIsExportModalOpen(true)}
-          className="flex items-center gap-2 px-6 py-2 bg-amber-300/10 backdrop-blur-md rounded-full border border-amber-300/30 hover:bg-amber-300/20 transition-all text-amber-300"
-        >
-          <Download size={18} />
-          <span className="text-sm font-bold tracking-wider">导出数据</span>
-        </button>
+        <div className="flex items-center gap-3">
+          <button 
+            onClick={() => setIsExportModalOpen(true)}
+            className="flex items-center gap-2 px-4 md:px-6 py-2 bg-amber-300/10 backdrop-blur-md rounded-full border border-amber-300/30 hover:bg-amber-300/20 transition-all text-amber-300"
+          >
+            <Download size={18} />
+            <span className="hidden md:inline text-sm font-bold tracking-wider">导出数据</span>
+          </button>
+          
+          {session && (
+            <button 
+              onClick={() => signOut({ callbackUrl: '/' })}
+              className="flex items-center gap-2 px-4 py-2 bg-rose-500/10 backdrop-blur-md rounded-full border border-rose-500/20 hover:bg-rose-500/20 transition-all text-rose-400"
+              title="退出登录"
+            >
+              <LogOut size={18} />
+              <span className="hidden md:inline text-sm font-bold tracking-wider">退出</span>
+            </button>
+          )}
+        </div>
       </nav>
 
       <main className="max-w-6xl mx-auto pt-32 pb-20 px-6">
@@ -236,6 +264,35 @@ export default function ProfilePage() {
                 <div key={i} className="h-48 glass-card rounded-[2rem] animate-pulse" />
               ))}
             </div>
+          ) : posts.length === 0 ? (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="flex flex-col items-center justify-center py-32 text-center space-y-6 glass-card rounded-[3rem] border-dashed border-white/10"
+            >
+              <div className="relative">
+                <motion.div
+                  animate={{ 
+                    opacity: [0.1, 0.3, 0.1],
+                    scale: [1, 1.1, 1],
+                  }}
+                  transition={{ duration: 5, repeat: Infinity }}
+                  className="absolute inset-0 blur-2xl bg-amber-300/10 rounded-full"
+                />
+                <Stars size={48} className="text-amber-200/20 relative z-10" strokeWidth={1} />
+              </div>
+              <div className="space-y-2">
+                <p className="text-amber-100/60 tracking-[0.2em] font-light italic">
+                  这片星域尚未留下你的光芒
+                </p>
+                <Link 
+                  href="/"
+                  className="text-xs text-amber-300/40 hover:text-amber-300 transition-colors tracking-widest uppercase font-bold"
+                >
+                  去星空投递第一枚星光 →
+                </Link>
+              </div>
+            </motion.div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               <AnimatePresence mode="popLayout">
@@ -279,6 +336,13 @@ export default function ProfilePage() {
           )}
         </section>
       </main>
+
+      <AuthGuardModal 
+        isOpen={isAuthModalOpen} 
+        onClose={() => setIsAuthModalOpen(false)} 
+        title="身份验证已失效"
+        message="为了保护你的星链数据安全，请重新登录后再进行操作。"
+      />
 
       {/* 导出 Modal */}
       <AnimatePresence>

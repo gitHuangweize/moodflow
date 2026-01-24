@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Noto_Serif_SC } from "next/font/google";
 import "./globals.css";
+import { AuthProvider } from "@/components/providers/AuthProvider";
 
 const notoSerifSC = Noto_Serif_SC({ 
   subsets: ["latin"],
@@ -22,7 +23,11 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="zh-CN">
-      <body className={`${notoSerifSC.variable} font-serif`}>{children}</body>
+      <body className={`${notoSerifSC.variable} font-serif`}>
+        <AuthProvider>
+          {children}
+        </AuthProvider>
+      </body>
     </html>
   );
 }

@@ -1,9 +1,21 @@
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 import { analyzeMood } from "@/lib/ai";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
 
 export async function POST(request: Request) {
   try {
+    const session = await getServerSession(authOptions);
+    console.log("Current Session:", JSON.stringify(session, null, 2));
+
+    if (!session || !session.user) {
+      return NextResponse.json(
+        { error: "请先登录再投递星光" },
+        { status: 401 }
+      );
+    }
+
     const body = await request.json();
     const { content, isPrivate, category, imageKey } = body;
 
@@ -24,6 +36,7 @@ export async function POST(request: Request) {
         isPrivate: isPrivate ?? false,
         category,
         imageUrl: imageKey,
+        authorId: (session.user as any).id,
       },
     });
 
