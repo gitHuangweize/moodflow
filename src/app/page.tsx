@@ -111,11 +111,24 @@ export default function Home() {
   }, []);
 
   const handlePolish = async () => {
-    if (!content) return;
+    if (!content || isPolishing) return;
     setIsPolishing(true);
-    await new Promise((resolve) => setTimeout(resolve, 1500));
-    setPolishedContent(content + " (AI 润色后的版本：让文字更有诗意...)");
-    setIsPolishing(false);
+    setPolishedContent("");
+    try {
+      const res = await fetch("/api/v1/ai/refine", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setPolishedContent(data.refinedContent);
+      }
+    } catch (error) {
+      console.error("Failed to polish content:", error);
+    } finally {
+      setIsPolishing(false);
+    }
   };
 
   const pageVariants = {

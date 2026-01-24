@@ -1,10 +1,11 @@
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
+import { analyzeMood } from "@/lib/ai";
 
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { content, moodTag, isPrivate, category, imageKey } = body;
+    const { content, isPrivate, category, imageKey } = body;
 
     if (!content) {
       return NextResponse.json(
@@ -13,13 +14,16 @@ export async function POST(request: Request) {
       );
     }
 
+    // 后端自动执行情绪识别
+    const moodTag = await analyzeMood(content);
+
     const post = await prisma.post.create({
       data: {
         content,
         moodTag,
         isPrivate: isPrivate ?? false,
         category,
-        imageUrl: imageKey, // 映射 imageKey 到 imageUrl
+        imageUrl: imageKey,
       },
     });
 
