@@ -1,8 +1,8 @@
 "use client";
-
+import Link from 'next/link';
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Shuffle, LayoutGrid, PlusCircle, User, X, Sparkles, Send } from "lucide-react";
+import { Shuffle, LayoutGrid, PlusCircle, User, X, Sparkles, Send, Heart } from "lucide-react";
 import StarryBackground from "@/components/ui/StarryBackground";
 
 export default function Home() {
@@ -12,25 +12,26 @@ export default function Home() {
   const [content, setContent] = useState("");
   const [isPolishing, setIsPolishing] = useState(false);
   const [polishedContent, setPolishedContent] = useState("");
-  const [currentPost, setCurrentPost] = useState<{ content: string; authorName?: string; moodTag?: string } | null>(null);
+  const [currentPost, setCurrentPost] = useState<{ id: string; content: string; authorName?: string; moodTag?: string; likesCount: number } | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  // 用于控制翻书动画的方向，虽然目前主要是单向换，但保留扩展性
+  const [isLiking, setIsLiking] = useState(false);
   const [direction, setDirection] = useState(1);
 
   const fetchRandomPost = async () => {
     if (isLoading) return;
     setIsLoading(true);
-    setDirection(1); // 每次点击都向右翻
+    setDirection(1); 
     try {
       const res = await fetch("/api/v1/posts/random");
       if (res.ok) {
         const data = await res.json();
-        // 稍微延迟一下以展示动画效果
         setTimeout(() => {
           setCurrentPost({
+            id: data.id,
             content: data.content,
             authorName: data.author?.name || "匿名",
             moodTag: data.moodTag,
+            likesCount: data._count?.likes || 0,
           });
           setIsLoading(false);
         }, 300);
@@ -38,6 +39,24 @@ export default function Home() {
     } catch (error) {
       console.error("Failed to fetch post:", error);
       setIsLoading(false);
+    }
+  };
+
+  const handleLike = async (postId: string) => {
+    if (isLiking) return;
+    setIsLiking(true);
+    try {
+      const res = await fetch(`/api/v1/posts/${postId}/like`, { method: "POST" });
+      if (res.ok) {
+        const data = await res.json();
+        if (currentPost && currentPost.id === postId) {
+          setCurrentPost({ ...currentPost, likesCount: data.count });
+        }
+      }
+    } catch (error) {
+      console.error("Failed to like:", error);
+    } finally {
+      setTimeout(() => setIsLiking(false), 600);
     }
   };
 
@@ -49,15 +68,11 @@ export default function Home() {
   const handlePolish = async () => {
     if (!content) return;
     setIsPolishing(true);
-    // 模拟 AI 润色延迟
     await new Promise((resolve) => setTimeout(resolve, 1500));
     setPolishedContent(content + " (AI 润色后的版本：让文字更有诗意...)");
     setIsPolishing(false);
   };
 
-  if (!mounted) return null;
-
-  // 翻书动画变体
   const pageVariants = {
     enter: (direction: number) => ({
       rotateY: direction > 0 ? 90 : -90,
@@ -70,7 +85,7 @@ export default function Home() {
       scale: 1,
       transition: {
         duration: 0.8,
-        ease: [0.16, 1, 0.3, 1] as [number, number, number, number], // iOS style spring-like ease
+        ease: [0.16, 1, 0.3, 1] as [number, number, number, number], 
       },
     },
     exit: (direction: number) => ({
@@ -84,47 +99,34 @@ export default function Home() {
     }),
   };
 
+  if (!mounted) return null;
+
   return (
     <div className="min-h-screen text-slate-100 font-serif overflow-hidden selection:bg-amber-200/30">
       <StarryBackground />
       
-      {/* 顶部导航 */}
-      <nav className="fixed top-0 w-full p-6 flex justify-between items-center z-50">
-        <div className="text-2xl font-bold italic tracking-tighter cursor-pointer text-amber-100/90 drop-shadow-[0_0_15px_rgba(251,191,36,0.3)] hover:text-amber-200 transition-colors" onClick={() => window.location.reload()}>MoodFlow</div>
+      <nav className="fixed top-0 w-full p-6 hidden md:flex justify-between items-center z-50">
+        <div className="text-2xl font-bold italic tracking-tighter cursor-pointer text-amber-300 drop-shadow-[0_0_15px_rgba(251,191,36,0.3)] hover:text-amber-300 transition-colors" onClick={() => window.location.reload()}>MoodFlow</div>
         <div className="flex gap-6 items-center bg-slate-900/30 backdrop-blur-md px-5 py-2.5 rounded-full shadow-2xl border border-white/10 ring-1 ring-white/5">
-          <button
-            onClick={() => setViewMode("random")}
-            className={`p-2.5 rounded-full transition-all duration-300 ${
-              viewMode === "random" ? "bg-amber-200/90 text-slate-900 shadow-[0_0_20px_rgba(251,191,36,0.4)] scale-110" : "hover:bg-white/10 text-slate-400 hover:text-slate-100"
-            }`}
-            title="沉浸模式"
-          >
-            <Shuffle size={18} strokeWidth={2.5} />
-          </button>
-          <button
-            onClick={() => setViewMode("feed")}
-            className={`p-2.5 rounded-full transition-all duration-300 ${
-              viewMode === "feed" ? "bg-amber-200/90 text-slate-900 shadow-[0_0_20px_rgba(251,191,36,0.4)] scale-110" : "hover:bg-white/10 text-slate-400 hover:text-slate-100"
-            }`}
-            title="卡片瀑布流"
-          >
-            <LayoutGrid size={18} strokeWidth={2.5} />
-          </button>
+          <button onClick={() => setViewMode("random")} className={`p-2.5 rounded-full transition-all duration-300 ${viewMode === "random" ? "bg-amber-300 text-slate-900 shadow-[0_0_20px_rgba(251,191,36,0.4)] scale-110" : "hover:bg-white/10 text-slate-400 hover:text-slate-100"}`} title="沉浸模式"><Shuffle size={18} strokeWidth={2.5} /></button>
+          <button onClick={() => setViewMode("feed")} className={`p-2.5 rounded-full transition-all duration-300 ${viewMode === "feed" ? "bg-amber-300 text-slate-900 shadow-[0_0_20px_rgba(251,191,36,0.4)] scale-110" : "hover:bg-white/10 text-slate-400 hover:text-slate-100"}`} title="卡片瀑布流"><LayoutGrid size={18} strokeWidth={2.5} /></button>
           <div className="w-px h-5 bg-white/10 mx-1" />
-          <button 
-            onClick={() => setIsComposeOpen(true)}
-            className="p-2.5 hover:bg-white/10 rounded-full transition-all text-amber-200/80 hover:text-amber-200 hover:scale-110 hover:shadow-[0_0_15px_rgba(251,191,36,0.2)]"
-          >
-            <PlusCircle size={20} strokeWidth={2} />
-          </button>
-          <button className="p-2.5 hover:bg-white/10 rounded-full transition-all text-slate-400 hover:text-slate-100">
-            <User size={20} strokeWidth={2} />
-          </button>
+          <button onClick={() => setIsComposeOpen(true)} className="p-2.5 hover:bg-white/10 rounded-full transition-all text-amber-200/80 hover:text-amber-300 hover:scale-110"><PlusCircle size={20} /></button>
+          <Link href="/profile" className="p-2.5 hover:bg-white/10 rounded-full transition-all text-slate-400 hover:text-slate-100">
+            <User size={20} />
+          </Link>
         </div>
       </nav>
 
-      {/* 主体内容 */}
-      <main className="relative h-screen flex flex-col items-center justify-center perspective-[2000px]">
+      <nav className="fixed bottom-0 w-full p-4 flex md:hidden justify-center items-center z-50 bg-slate-950/80 backdrop-blur-xl border-t border-white/10">
+        <div className="flex gap-8 items-center px-6 py-2">
+          <button onClick={() => setViewMode("random")} className={`p-3 rounded-full transition-all ${viewMode === "random" ? "text-amber-300 scale-125" : "text-slate-400"}`}><Shuffle size={20} /></button>
+          <button onClick={() => setIsComposeOpen(true)} className="p-4 bg-amber-300 text-slate-900 rounded-full shadow-lg transform -translate-y-4 border-4 border-slate-950"><PlusCircle size={24} /></button>
+          <button onClick={() => setViewMode("feed")} className={`p-3 rounded-full transition-all ${viewMode === "feed" ? "text-amber-300 scale-125" : "text-slate-400"}`}><LayoutGrid size={20} /></button>
+        </div>
+      </nav>
+
+      <main className="relative h-screen flex flex-col items-center justify-center perspective-[2000px] px-4 md:px-0">
         <AnimatePresence mode="wait" custom={direction}>
           {viewMode === "random" ? (
             <motion.div
@@ -134,36 +136,81 @@ export default function Home() {
               initial="enter"
               animate="center"
               exit="exit"
-              className="max-w-4xl w-full px-8 text-center"
+              className="max-w-4xl w-full text-center relative"
             >
-              {/* 核心玻璃容器 */}
-              <div className="relative group cursor-pointer bg-white/5 backdrop-blur-2xl p-16 md:p-24 rounded-[3rem] border border-white/10 shadow-[0_8px_32px_0_rgba(0,0,0,0.36)] hover:border-white/20 transition-all duration-700 hover:shadow-[0_20px_50px_0_rgba(0,0,0,0.4)]">
-                {/* 装饰性角标 */}
-                <div className="absolute top-8 left-8 text-amber-200/20">
-                  <Sparkles size={24} />
-                </div>
-                <div className="absolute bottom-8 right-8 text-amber-200/20 rotate-180">
-                  <Sparkles size={24} />
-                </div>
+              <div 
+                className="absolute inset-y-0 -left-20 w-40 cursor-w-resize z-10 hidden lg:block" 
+                onClick={(e) => { e.stopPropagation(); fetchRandomPost(); }} 
+                title="上一页"
+              />
+              <div 
+                className="absolute inset-y-0 -right-20 w-40 cursor-e-resize z-10 hidden lg:block" 
+                onClick={(e) => { e.stopPropagation(); fetchRandomPost(); }} 
+                title="下一页"
+              />
 
-                <blockquote className={`font-serif text-3xl md:text-5xl leading-[1.6] md:leading-[1.5] text-slate-100 tracking-wide drop-shadow-lg ${isLoading ? "blur-sm opacity-50" : ""} transition-all duration-500`}>
+              <div 
+                className="relative group cursor-pointer glass-card p-10 md:p-24 rounded-[2.5rem] md:rounded-[3rem] transition-all duration-700 overflow-hidden"
+                onClick={() => fetchRandomPost()}
+              >
+                {isLoading && (
+                  <div className="absolute inset-0 z-20 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm">
+                    <div className="flex gap-2">
+                      {[0, 1, 2].map((i) => (
+                        <motion.div
+                          key={i}
+                          animate={{
+                            scale: [1, 1.5, 1],
+                            opacity: [0.3, 1, 0.3],
+                            boxShadow: ["0 0 0px rgba(251,191,36,0)", "0 0 20px rgba(251,191,36,0.5)", "0 0 0px rgba(251,191,36,0)"]
+                          }}
+                          transition={{
+                            duration: 1.5,
+                            repeat: Infinity,
+                            delay: i * 0.2
+                          }}
+                          className="w-3 h-3 bg-amber-300 rounded-full"
+                        />
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                <blockquote className={`font-serif text-2xl md:text-5xl leading-relaxed text-slate-100 tracking-wide text-shadow-starlight ${isLoading ? "blur-md opacity-20" : ""} transition-all duration-500`}>
                   “{currentPost?.content || "正在从星空中拾取..."}”
                 </blockquote>
                 
-                <cite className="mt-12 block text-amber-200/70 not-italic text-sm md:text-base tracking-[0.3em] uppercase font-medium">
-                  — {currentPost?.authorName || "MOODFLOW"}
-                </cite>
+                <div className="mt-12 flex flex-col md:flex-row items-center justify-center gap-6">
+                  <cite className="text-amber-300/70 not-italic text-sm md:text-base tracking-[0.3em] uppercase font-medium">
+                    — {currentPost?.authorName || "MOODFLOW"}
+                  </cite>
+                  
+                  {currentPost && (
+                    <button 
+                      onClick={(e) => { e.stopPropagation(); handleLike(currentPost.id); }}
+                      className="flex items-center gap-2 px-4 py-2 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 transition-all group"
+                    >
+                      <motion.div
+                        animate={isLiking ? { scale: [1, 1.5, 1], filter: ["blur(0px)", "blur(4px)", "blur(0px)"] } : {}}
+                        transition={{ duration: 0.5 }}
+                        className={isLiking ? "text-rose-400 shadow-[0_0_15px_rgba(251,113,133,0.5)]" : "text-slate-400 group-hover:text-rose-400"}
+                      >
+                        <Heart size={20} fill={isLiking ? "currentColor" : "none"} />
+                      </motion.div>
+                      <span className="text-sm font-sans text-slate-400">{currentPost.likesCount}</span>
+                    </button>
+                  )}
+                </div>
               </div>
               
-              <div className="mt-20">
+              <div className="mt-12 md:mt-20">
                 <button 
-                  onClick={fetchRandomPost}
+                  onClick={(e) => { e.stopPropagation(); fetchRandomPost(); }}
                   disabled={isLoading}
-                  className="group relative flex items-center gap-3 mx-auto px-8 py-3.5 bg-amber-200/10 hover:bg-amber-200/20 text-amber-100 rounded-full border border-amber-200/30 hover:border-amber-200/50 transition-all duration-300 backdrop-blur-md shadow-[0_0_20px_rgba(251,191,36,0.1)] hover:shadow-[0_0_30px_rgba(251,191,36,0.25)] disabled:opacity-50 disabled:cursor-not-allowed overflow-hidden"
+                  className="group relative flex items-center gap-3 mx-auto px-8 py-3.5 bg-amber-300/10 hover:bg-amber-300/20 text-amber-100 rounded-full border border-amber-300/30 transition-all shadow-[0_0_15px_rgba(251,191,36,0.1)] hover:shadow-[0_0_25px_rgba(251,191,36,0.2)]"
                 >
-                  <div className="absolute inset-0 bg-gradient-to-r from-transparent via-amber-200/10 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000" />
-                  <Shuffle size={18} className={`${isLoading ? "animate-spin" : "group-hover:rotate-180"} transition-transform duration-500`} />
-                  <span className="font-medium tracking-[0.1em] text-sm">换一个</span>
+                  <Shuffle size={18} className={isLoading ? "animate-spin" : "group-hover:rotate-180"} />
+                  <span className="font-medium tracking-wide text-sm">再翻一页</span>
                 </button>
               </div>
             </motion.div>

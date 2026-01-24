@@ -22,6 +22,12 @@ body {
   box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.36);
 }
 
+@layer utilities {
+  .text-shadow-starlight {
+    text-shadow: 0 0 10px rgba(253, 230, 138, 0.3), 0 0 20px rgba(0, 0, 0, 0.5);
+  }
+}
+
 /* 隐藏滚动条但保留滚动功能 */
 .custom-scrollbar::-webkit-scrollbar {
   display: none;

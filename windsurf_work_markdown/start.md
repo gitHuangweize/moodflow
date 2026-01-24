@@ -58,3 +58,11 @@
 *   **数据库填充**: 您可以先手动在数据库中添加几条测试数据，或者我为您编写一个 Seed 脚本。
 
 **您可以直接在浏览器预览中查看效果。如果您满意，我们可以开始进行 API 层的开发。**
+
+前端UI的改进：依靠gemini 的提示，让我跟windsurf沟通
+
+“我现在遇到了 Module not found: Can't resolve '@vercel/turbopack-next/...' 的错误。
+
+请帮我检查 package.json 和 layout.tsx 中的字体引入是否正确。
+
+顺便，请帮我重构全局 CSS，按照 UI_UX_Design_System.md 里的‘星光感’要求，把背景改为深蓝色渐变，并给中间的句子加上毛玻璃卡片效果。”
