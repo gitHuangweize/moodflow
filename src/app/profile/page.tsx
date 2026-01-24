@@ -44,13 +44,35 @@ export default function ProfilePage() {
     joinDate: "2026-01-22"
   });
 
-  // 模拟情绪数据 (Mood Graph)
+  // 情绪数据 (Mood Graph) - 基于真实帖子数据生成
   const moodData = useMemo(() => {
-    return Array.from({ length: 30 }).map((_, i) => ({
-      day: i,
-      intensity: Math.random() // 0 到 1 代表星光亮度
-    }));
-  }, []);
+    // 创建最近 30 天的数组
+    const last30Days = Array.from({ length: 30 }).map((_, i) => {
+      const date = new Date();
+      date.setDate(date.getDate() - (29 - i));
+      date.setHours(0, 0, 0, 0);
+      return date;
+    });
+
+    return last30Days.map((date, i) => {
+      // 查找该日期的帖子
+      const postsOnDay = posts.filter(p => {
+        const postDate = new Date(p.createdAt);
+        postDate.setHours(0, 0, 0, 0);
+        return postDate.getTime() === date.getTime();
+      });
+
+      // 亮度根据当天帖子数量决定 (0条: 0.1, 1条: 0.5, 2条+: 1.0)
+      let intensity = 0;
+      if (postsOnDay.length === 1) intensity = 0.5;
+      else if (postsOnDay.length > 1) intensity = 1.0;
+
+      return {
+        day: i,
+        intensity: intensity || 0.05 // 即使没数据也给点微光
+      };
+    });
+  }, [posts]);
 
   const fetchMyPosts = async () => {
     try {

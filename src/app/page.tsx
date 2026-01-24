@@ -17,6 +17,51 @@ export default function Home() {
   const [isLiking, setIsLiking] = useState(false);
   const [direction, setDirection] = useState(1);
 
+  const handlePublish = async () => {
+    if (!content) return;
+    setIsLoading(true);
+    try {
+      const res = await fetch("/api/v1/posts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          content,
+          moodTag: "感悟",
+          isPrivate: false,
+        }),
+      });
+      if (res.ok) {
+        setContent("");
+        setPolishedContent("");
+        setIsComposeOpen(false);
+        fetchRandomPost();
+      }
+    } catch (error) {
+      console.error("Failed to publish:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const [posts, setPosts] = useState<any[]>([]);
+  const fetchFeed = async () => {
+    try {
+      const res = await fetch("/api/v1/posts/me");
+      if (res.ok) {
+        const data = await res.json();
+        setPosts(data);
+      }
+    } catch (error) {
+      console.error("Failed to fetch feed:", error);
+    }
+  };
+
+  useEffect(() => {
+    if (viewMode === "feed") {
+      fetchFeed();
+    }
+  }, [viewMode]);
+
   const fetchRandomPost = async () => {
     if (isLoading) return;
     setIsLoading(true);
@@ -224,14 +269,14 @@ export default function Home() {
               className="w-full h-full pt-32 overflow-y-auto px-4 md:px-8 custom-scrollbar"
             >
               <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 pb-20">
-                {[1, 2, 3, 4, 5, 6].map((i) => (
-                  <div key={i} className="bg-white/5 backdrop-blur-xl p-8 rounded-[2rem] border border-white/5 shadow-lg hover:border-amber-200/20 hover:bg-white/10 transition-all duration-500 group cursor-pointer">
+                {posts.map((post) => (
+                  <div key={post.id} className="bg-white/5 backdrop-blur-xl p-8 rounded-[2rem] border border-white/5 shadow-lg hover:border-amber-200/20 hover:bg-white/10 transition-all duration-500 group cursor-pointer">
                     <p className="text-lg text-slate-200/90 leading-relaxed mb-6 group-hover:text-slate-100 transition-colors font-serif tracking-wide">
-                      这是一条模拟的心得文字。在这个瞬息万变的世界里，找到一处安静的角落，记录下当下的感受。
+                      {post.content}
                     </p>
                     <div className="flex justify-between items-center text-xs text-amber-200/50 font-medium tracking-wider">
-                      <span className="bg-amber-200/5 px-3 py-1 rounded-full group-hover:bg-amber-200/10 transition-colors"># 感悟</span>
-                      <span>2小时前</span>
+                      <span className="bg-amber-200/5 px-3 py-1 rounded-full group-hover:bg-amber-200/10 transition-colors"># {post.moodTag || "感悟"}</span>
+                      <span>{new Date(post.createdAt).toLocaleDateString()}</span>
                     </div>
                   </div>
                 ))}
@@ -310,11 +355,12 @@ export default function Home() {
                     <span>{isPolishing ? "星尘聚拢中..." : "AI 润色"}</span>
                   </button>
                   <button
-                    disabled={!content}
+                    onClick={handlePublish}
+                    disabled={!content || isLoading}
                     className="flex items-center gap-2 px-8 py-3 bg-amber-200 text-slate-900 rounded-full hover:bg-amber-100 hover:scale-105 transition-all shadow-[0_0_20px_rgba(251,191,36,0.2)] font-bold tracking-widest disabled:opacity-30 disabled:hover:scale-100 text-sm"
                   >
                     <Send size={16} />
-                    <span>发布</span>
+                    <span>{isLoading ? "发布中..." : "发布"}</span>
                   </button>
                 </div>
               </div>

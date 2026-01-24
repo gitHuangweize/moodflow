@@ -3,10 +3,11 @@ import { NextResponse } from "next/server";
 
 export async function POST(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const postId = params.id;
+    const { id: postId } = await params;
+    console.log(`Toggling like for post: ${postId}`);
 
     // 这里由于还没做 Auth，暂时模拟一个匿名点赞逻辑
     // 在实际项目中，通常会记录哪个用户点赞了哪篇文章
