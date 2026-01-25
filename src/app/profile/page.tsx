@@ -2,6 +2,12 @@
 
 import { useState, useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { signOut, useSession } from "next-auth/react";
+import { useRef } from "react";
+import { toPng } from 'html-to-image';
+import ShareCard from "@/components/ui/ShareCard";
+import Link from "next/link";
+import MeteorBackground from "@/components/ui/MeteorBackground";
 import { 
   ArrowLeft, 
   Trash2, 
@@ -16,11 +22,9 @@ import {
   AlertTriangle,
   Sparkles,
   Stars,
-  LogOut
+  LogOut,
+  Share2
 } from "lucide-react";
-import Link from "next/link";
-import MeteorBackground from "@/components/ui/MeteorBackground";
-import { signOut } from "next-auth/react";
 
 interface Post {
   id: string;
@@ -32,9 +36,7 @@ interface Post {
     comments: number;
   };
 }
-
 import AuthGuardModal from "@/components/ui/AuthGuardModal";
-import { useSession } from "next-auth/react";
 
 export default function ProfilePage() {
   const { data: session } = useSession();
@@ -45,6 +47,9 @@ export default function ProfilePage() {
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [exportFormat, setExportFormat] = useState<'md' | 'json' | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [isExporting, setIsExporting] = useState(false);
+  const [shareContent, setShareContent] = useState<Post | null>(null);
+  const shareCardRef = useRef<HTMLDivElement>(null);
   const [user, setUser] = useState({
     name: session?.user?.name || "星空旅人",
     image: session?.user?.image || null,
@@ -148,6 +153,45 @@ export default function ProfilePage() {
     a.click();
     setIsExportModalOpen(false);
     setExportFormat(null);
+  };
+
+  const handleShareCardExport = async (post: Post) => {
+    if (!shareCardRef.current || isExporting) return;
+    setShareContent(post);
+    setIsExporting(true);
+    
+    // 给一点时间让模板状态更新
+    setTimeout(async () => {
+      try {
+        const dataUrl = await toPng(shareCardRef.current!, {
+          quality: 0.95,
+          pixelRatio: 2,
+          width: 750,
+        });
+        const link = document.createElement('a');
+        link.download = `MoodFlow-${post.id}.png`;
+        link.href = dataUrl;
+        link.click();
+      } catch (err) {
+        console.error('Export failed:', err);
+      } finally {
+        setIsExporting(false);
+        setShareContent(null);
+      }
+    }, 100);
+  };
+
+  const moods = [
+    { label: "感悟", icon: "✨" },
+    { label: "平静", icon: "🌙" },
+    { label: "喜悦", icon: "☀️" },
+    { label: "迷茫", icon: "🌊" },
+    { label: "焦躁", icon: "🔥" },
+    { label: "忧伤", icon: "☁️" },
+  ];
+
+  const getMoodIcon = (tag?: string) => {
+    return moods.find(m => m.label === tag)?.icon || "✨";
   };
 
   return (
@@ -316,7 +360,7 @@ export default function ProfilePage() {
                     </p>
                     
                     <div className="flex justify-between items-center text-xs text-slate-500">
-                      <div className="flex gap-4">
+                      <div className="flex items-center gap-4">
                         <span className="flex items-center gap-1">
                           <Heart size={14} className="text-rose-400/50" />
                           {post._count.likes}
@@ -325,6 +369,13 @@ export default function ProfilePage() {
                           <MessageSquare size={14} />
                           {post._count.comments}
                         </span>
+                        <button 
+                          onClick={(e) => { e.stopPropagation(); handleShareCardExport(post); }}
+                          className="flex items-center gap-1 hover:text-amber-300 transition-colors"
+                          title="分享卡片"
+                        >
+                          <Share2 size={14} />
+                        </button>
                       </div>
                       <span>{new Date(post.createdAt).toLocaleDateString()}</span>
                     </div>
@@ -342,6 +393,15 @@ export default function ProfilePage() {
           )}
         </section>
       </main>
+
+      <ShareCard 
+        ref={shareCardRef}
+        content={shareContent?.content || ""}
+        authorName={user.name}
+        date={shareContent ? new Date(shareContent.createdAt).toLocaleDateString('zh-CN', { year: 'numeric', month: 'long', day: 'numeric' }) : ""}
+        moodTag={shareContent?.moodTag}
+        moodIcon={shareContent?.moodTag ? getMoodIcon(shareContent.moodTag) : undefined}
+      />
 
       <AuthGuardModal 
         isOpen={isAuthModalOpen} 

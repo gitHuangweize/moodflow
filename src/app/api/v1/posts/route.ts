@@ -29,7 +29,7 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json();
-    const { content, isPrivate, category, imageKey } = body;
+    const { content, isPrivate, category, imageKey, moodTag: userMoodTag } = body;
 
     if (!content) {
       return NextResponse.json(
@@ -38,8 +38,8 @@ export async function POST(request: Request) {
       );
     }
 
-    // 后端自动执行情绪识别
-    const moodTag = await analyzeMood(content);
+    // 如果用户没有选择情绪标签，则后端自动执行情绪识别
+    const moodTag = userMoodTag || await analyzeMood(content);
 
     const post = await prisma.post.create({
       data: {

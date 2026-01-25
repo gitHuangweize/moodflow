@@ -3,7 +3,10 @@ import Link from 'next/link';
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useSession, signOut } from "next-auth/react";
-import { Shuffle, LayoutGrid, PlusCircle, User, X, Sparkles, Send, Heart, LogOut, LogIn, Stars, MessageSquare } from "lucide-react";
+import { useRef } from "react";
+import { toPng } from 'html-to-image';
+import ShareCard from "@/components/ui/ShareCard";
+import { Shuffle, LayoutGrid, PlusCircle, User, X, Sparkles, Send, Heart, LogOut, LogIn, Stars, MessageSquare, Share2 } from "lucide-react";
 import StarryBackground from "@/components/ui/StarryBackground";
 import AuthGuardModal from "@/components/ui/AuthGuardModal";
 import UserStatus from "@/components/ui/UserStatus";
@@ -16,6 +19,7 @@ export default function Home() {
   const [mounted, setMounted] = useState(false);
   const [isComposeOpen, setIsComposeOpen] = useState(false);
   const [content, setContent] = useState("");
+  const [selectedMood, setSelectedMood] = useState("感悟");
   const [isPolishing, setIsPolishing] = useState(false);
   const [polishedContent, setPolishedContent] = useState("");
   const [currentPost, setCurrentPost] = useState<{ id: string; content: string; authorName?: string; moodTag?: string; likesCount: number; commentsCount?: number } | null>(null);
@@ -26,8 +30,23 @@ export default function Home() {
   const [isLoadingComments, setIsLoadingComments] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isLiking, setIsLiking] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
+  const shareCardRef = useRef<HTMLDivElement>(null);
   const [direction, setDirection] = useState(1);
   const [posts, setPosts] = useState<any[]>([]);
+
+  const moods = [
+    { label: "感悟", icon: "✨" },
+    { label: "平静", icon: "🌙" },
+    { label: "喜悦", icon: "☀️" },
+    { label: "迷茫", icon: "🌊" },
+    { label: "焦躁", icon: "🔥" },
+    { label: "忧伤", icon: "☁️" },
+  ];
+
+  const getMoodIcon = (tag: string) => {
+    return moods.find(m => m.label === tag)?.icon || "✨";
+  };
 
   const handlePublish = async () => {
     if (!content) return;
@@ -40,13 +59,14 @@ export default function Home() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             content,
-            moodTag: "感悟",
+            moodTag: selectedMood,
             isPrivate: false,
           }),
         });
         if (res.ok) {
           setContent("");
           setPolishedContent("");
+          setSelectedMood("感悟");
           setIsComposeOpen(false);
           fetchRandomPost();
           if (viewMode === "feed") fetchFeed();
@@ -171,6 +191,26 @@ export default function Home() {
         setTimeout(() => setIsLiking(false), 600);
       }
     });
+  };
+
+  const handleExport = async () => {
+    if (!shareCardRef.current || isExporting) return;
+    setIsExporting(true);
+    try {
+      const dataUrl = await toPng(shareCardRef.current, {
+        quality: 0.95,
+        pixelRatio: 2,
+        width: 750,
+      });
+      const link = document.createElement('a');
+      link.download = `MoodFlow-${currentPost?.id || 'share'}.png`;
+      link.href = dataUrl;
+      link.click();
+    } catch (err) {
+      console.error('Export failed:', err);
+    } finally {
+      setIsExporting(false);
+    }
   };
 
   useEffect(() => {
@@ -369,9 +409,17 @@ export default function Home() {
                       </blockquote>
                       
                       <div className="mt-12 flex flex-col md:flex-row items-center justify-center gap-6 md:gap-8">
-                        <cite className="text-amber-300/70 not-italic text-sm md:text-base tracking-[0.3em] uppercase font-medium">
-                          — {currentPost?.authorName || "MOODFLOW"}
-                        </cite>
+                        <div className="flex items-center gap-3">
+                          <cite className="text-amber-300/70 not-italic text-sm md:text-base tracking-[0.3em] uppercase font-medium">
+                            — {currentPost?.authorName || "MOODFLOW"}
+                          </cite>
+                          {currentPost?.moodTag && (
+                            <span className="px-3 py-1 rounded-full bg-amber-300/10 border border-amber-300/20 text-amber-200/80 text-xs font-medium flex items-center gap-1.5 animate-pulse-slow">
+                              <span className="text-sm">{getMoodIcon(currentPost.moodTag)}</span>
+                              {currentPost.moodTag}
+                            </span>
+                          )}
+                        </div>
                         
                         {currentPost && (
                           <div className="flex items-center gap-6">
@@ -399,6 +447,15 @@ export default function Home() {
                             >
                               <MessageSquare size={20} className="text-slate-400 group-hover:text-amber-300" />
                               <span className="text-sm font-sans text-slate-400">{currentPost.commentsCount || 0}</span>
+                            </button>
+
+                            <button 
+                              onClick={(e) => { e.stopPropagation(); handleExport(); }}
+                              disabled={isExporting}
+                              className="flex items-center gap-2 px-4 py-2 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 transition-all group disabled:opacity-50"
+                              title="分享卡片"
+                            >
+                              <Share2 size={20} className={`${isExporting ? "animate-pulse text-amber-300" : "text-slate-400 group-hover:text-amber-300"}`} />
                             </button>
                           </div>
                         )}
@@ -514,7 +571,12 @@ export default function Home() {
                           {post.content}
                         </p>
                         <div className="flex justify-between items-center text-[10px] md:text-xs text-amber-200/50 font-medium tracking-wider gap-2">
-                          <span className="bg-amber-200/5 px-2 py-0.5 md:px-3 md:py-1 rounded-full group-hover:bg-amber-200/10 transition-colors shrink-0 truncate max-w-[100px]"># {post.moodTag || "感悟"}</span>
+                          <div className="flex items-center gap-2">
+                            <span className="bg-amber-200/5 px-2 py-0.5 md:px-3 md:py-1 rounded-full group-hover:bg-amber-200/10 transition-colors shrink-0 truncate max-w-[100px] flex items-center gap-1">
+                              <span>{getMoodIcon(post.moodTag || "感悟")}</span>
+                              {post.moodTag || "感悟"}
+                            </span>
+                          </div>
                           <div className="flex items-center gap-4">
                             <span className="flex items-center gap-1">
                               <Heart size={12} className="text-rose-400/50" />
@@ -536,6 +598,15 @@ export default function Home() {
           )}
         </AnimatePresence>
       </main>
+
+      <ShareCard 
+        ref={shareCardRef}
+        content={currentPost?.content || ""}
+        authorName={currentPost?.authorName || "星空旅人"}
+        date={new Date().toLocaleDateString('zh-CN', { year: 'numeric', month: 'long', day: 'numeric' })}
+        moodTag={currentPost?.moodTag}
+        moodIcon={currentPost?.moodTag ? getMoodIcon(currentPost.moodTag) : undefined}
+      />
 
       <AuthGuardModal 
         isOpen={isAuthModalOpen} 
@@ -574,6 +645,26 @@ export default function Home() {
                   placeholder="此刻，你在想什么..."
                   className="w-full h-48 p-6 bg-black/20 rounded-3xl border border-white/5 focus:border-amber-200/30 focus:bg-black/40 focus:ring-0 resize-none text-lg text-slate-100 placeholder:text-slate-600 transition-all font-serif tracking-wide leading-relaxed"
                 />
+
+                <div className="mt-6">
+                  <p className="text-xs font-bold text-amber-200/50 tracking-widest uppercase mb-4 px-2">选择此刻的情绪</p>
+                  <div className="flex flex-wrap gap-3">
+                    {moods.map((mood) => (
+                      <button
+                        key={mood.label}
+                        onClick={() => setSelectedMood(mood.label)}
+                        className={`flex items-center gap-2 px-4 py-2 rounded-2xl border transition-all ${
+                          selectedMood === mood.label
+                            ? "bg-amber-300/20 border-amber-300/50 text-amber-100 shadow-[0_0_15px_rgba(251,191,36,0.2)]"
+                            : "bg-white/5 border-white/5 text-slate-400 hover:bg-white/10"
+                        }`}
+                      >
+                        <span className="text-lg">{mood.icon}</span>
+                        <span className="text-sm font-medium tracking-wide">{mood.label}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
                 
                 <AnimatePresence>
                   {polishedContent && (
