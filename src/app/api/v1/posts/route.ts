@@ -16,6 +16,18 @@ export async function POST(request: Request) {
       );
     }
 
+    // 预留邮箱验证拦截逻辑
+    if (!(session.user as any).emailVerified) {
+      // 暂时仅打日志，后续可改为返回 403 错误
+      console.log(`User ${(session.user as any).id} attempted to post without email verification.`);
+      /*
+      return NextResponse.json(
+        { error: "请先验证邮箱后再投递星光" },
+        { status: 403 }
+      );
+      */
+    }
+
     const body = await request.json();
     const { content, isPrivate, category, imageKey } = body;
 

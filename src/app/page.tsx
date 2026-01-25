@@ -27,6 +27,7 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState(false);
   const [isLiking, setIsLiking] = useState(false);
   const [direction, setDirection] = useState(1);
+  const [posts, setPosts] = useState<any[]>([]);
 
   const handlePublish = async () => {
     if (!content) return;
@@ -48,6 +49,7 @@ export default function Home() {
           setPolishedContent("");
           setIsComposeOpen(false);
           fetchRandomPost();
+          if (viewMode === "feed") fetchFeed();
         }
       } catch (error) {
         console.error("Failed to publish:", error);
@@ -57,10 +59,9 @@ export default function Home() {
     });
   };
 
-  const [posts, setPosts] = useState<any[]>([]);
   const fetchFeed = async () => {
     try {
-      const res = await fetch("/api/v1/posts/me");
+      const res = await fetch("/api/v1/posts/list");
       if (res.ok) {
         const data = await res.json();
         setPosts(data);
@@ -105,7 +106,6 @@ export default function Home() {
         if (res.ok) {
           setCommentContent("");
           fetchComments(currentPost.id);
-          // 局部更新评论数
           setCurrentPost({
             ...currentPost,
             commentsCount: (currentPost.commentsCount || 0) + 1
@@ -137,8 +137,8 @@ export default function Home() {
               likesCount: data._count?.likes || 0,
               commentsCount: data._count?.comments || 0,
             });
-            setComments([]); // 清空旧评论
-            setIsCommentsOpen(false); // 切换帖子时关闭评论框
+            setComments([]);
+            setIsCommentsOpen(false);
             setIsLoading(false);
           }, 300);
         } else {
@@ -211,7 +211,7 @@ export default function Home() {
       scale: 1,
       transition: {
         duration: 0.8,
-        ease: [0.16, 1, 0.3, 1] as [number, number, number, number], 
+        ease: [0.16, 1, 0.3, 1] as any, 
       },
     },
     exit: (direction: number) => ({
@@ -220,7 +220,7 @@ export default function Home() {
       scale: 1.1,
       transition: {
         duration: 0.6,
-        ease: [0.16, 1, 0.3, 1] as [number, number, number, number],
+        ease: [0.16, 1, 0.3, 1] as any,
       },
     }),
   };
@@ -267,7 +267,13 @@ export default function Home() {
       <main className="relative h-screen flex flex-col items-center justify-center perspective-[2000px] px-4 md:px-0">
         <AnimatePresence mode="wait" custom={direction}>
           {viewMode === "random" ? (
-            <div key="random-container" className="relative z-10 w-full max-w-4xl px-4 md:px-6 py-12 text-center">
+            <motion.div 
+              key="random-container" 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="relative z-10 w-full max-w-4xl px-4 md:px-6 py-12 text-center flex flex-col items-center"
+            >
               <AnimatePresence mode="wait">
                 {!currentPost && !isLoading ? (
                   <motion.div
@@ -318,7 +324,7 @@ export default function Home() {
                     initial="enter"
                     animate="center"
                     exit="exit"
-                    className="max-w-4xl w-full text-center relative"
+                    className="max-w-4xl w-full text-center relative flex flex-col items-center"
                   >
                     <div 
                       className="absolute inset-y-0 -left-20 w-40 cursor-w-resize z-10 hidden lg:block" 
@@ -332,7 +338,7 @@ export default function Home() {
                     />
 
                     <div 
-                      className="relative group cursor-pointer glass-card p-8 md:p-24 rounded-[2.5rem] md:rounded-[3rem] transition-all duration-700 overflow-hidden"
+                      className="relative group cursor-pointer glass-card p-8 md:p-24 rounded-[2.5rem] md:rounded-[3rem] transition-all duration-700 overflow-hidden w-full"
                       onClick={() => fetchRandomPost()}
                     >
                       {isLoading && (
@@ -398,14 +404,13 @@ export default function Home() {
                         )}
                       </div>
 
-                      {/* 评论区内嵌在卡片内 */}
                       <AnimatePresence>
                         {isCommentsOpen && (
                           <motion.div
                             initial={{ opacity: 0, height: 0 }}
                             animate={{ opacity: 1, height: "auto" }}
                             exit={{ opacity: 0, height: 0 }}
-                            className="mt-12 text-left pt-0"
+                            className="mt-12 text-left pt-0 overflow-hidden"
                             onClick={(e) => e.stopPropagation()}
                           >
                             <div className="relative flex items-center mb-10 group/input">
@@ -414,7 +419,7 @@ export default function Home() {
                                 value={commentContent}
                                 onChange={(e) => setCommentContent(e.target.value)}
                                 placeholder="写下你的共鸣..."
-                                className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 pr-16 focus:outline-none focus:border-amber-300/30 text-sm transition-all placeholder:text-slate-600"
+                                className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 pr-16 focus:outline-none focus:border-amber-300/30 text-sm transition-all placeholder:text-slate-600 text-white"
                                 onKeyDown={(e) => e.key === 'Enter' && handlePostComment()}
                               />
                               <button 
@@ -479,7 +484,7 @@ export default function Home() {
                   </motion.div>
                 )}
               </AnimatePresence>
-            </div>
+            </motion.div>
           ) : (
             <motion.div
               key="feed"
@@ -510,7 +515,17 @@ export default function Home() {
                         </p>
                         <div className="flex justify-between items-center text-[10px] md:text-xs text-amber-200/50 font-medium tracking-wider gap-2">
                           <span className="bg-amber-200/5 px-2 py-0.5 md:px-3 md:py-1 rounded-full group-hover:bg-amber-200/10 transition-colors shrink-0 truncate max-w-[100px]"># {post.moodTag || "感悟"}</span>
-                          <span className="shrink-0">{new Date(post.createdAt).toLocaleDateString()}</span>
+                          <div className="flex items-center gap-4">
+                            <span className="flex items-center gap-1">
+                              <Heart size={12} className="text-rose-400/50" />
+                              {post._count?.likes || 0}
+                            </span>
+                            <span className="flex items-center gap-1">
+                              <MessageSquare size={12} />
+                              {post._count?.comments || 0}
+                            </span>
+                            <span className="shrink-0 ml-2">{new Date(post.createdAt).toLocaleDateString()}</span>
+                          </div>
                         </div>
                       </div>
                     ))}
@@ -527,7 +542,6 @@ export default function Home() {
         onClose={() => setIsAuthModalOpen(false)} 
       />
 
-      {/* 发布对话框 */}
       <AnimatePresence>
         {isComposeOpen && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">

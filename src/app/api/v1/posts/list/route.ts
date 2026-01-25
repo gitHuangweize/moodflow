@@ -11,15 +11,8 @@ export async function GET(request: Request) {
       isPrivate: false,
     };
 
-    if (userId) {
-      where.authorId = userId;
-      // 如果是查特定用户的，可能包含私有
-      delete where.isPrivate; 
-    }
-
-    if (category) {
-      where.category = category;
-    }
+    // 调试打印
+    console.log("Fetching global post list with where:", JSON.stringify(where, null, 2));
 
     const posts = await prisma.post.findMany({
       where,

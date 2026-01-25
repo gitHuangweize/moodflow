@@ -46,6 +46,8 @@ export default function SignUp() {
       if (result?.error) {
         router.push("/auth/signin");
       } else {
+        // 确保 session 更新
+        await fetch("/api/auth/session");
         router.push("/");
         router.refresh();
       }

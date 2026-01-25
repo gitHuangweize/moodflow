@@ -1,11 +1,25 @@
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
 
 export async function GET() {
   try {
-    // 实际项目中这里应该从 Session 中获取用户 ID
-    // 目前为了演示，获取所有心得，假设它们都属于当前用户
+    const session = await getServerSession(authOptions);
+    
+    if (!session || !session.user) {
+      return NextResponse.json(
+        { error: "请先登录" },
+        { status: 401 }
+      );
+    }
+
+    const userId = (session.user as any).id;
+
     const posts = await prisma.post.findMany({
+      where: {
+        authorId: userId
+      },
       orderBy: { createdAt: "desc" },
       include: {
         _count: {

@@ -46,11 +46,17 @@ export default function ProfilePage() {
   const [exportFormat, setExportFormat] = useState<'md' | 'json' | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [user, setUser] = useState({
-    name: "星空旅人",
-    image: null,
+    name: session?.user?.name || "星空旅人",
+    image: session?.user?.image || null,
     postsCount: 0,
     joinDate: "2026-01-22"
   });
+
+  useEffect(() => {
+    if (session?.user?.name) {
+      setUser(prev => ({ ...prev, name: session.user?.name || prev.name, image: session.user?.image || prev.image }));
+    }
+  }, [session]);
 
   // 情绪数据 (Mood Graph) - 基于真实帖子数据生成
   const moodData = useMemo(() => {
@@ -283,7 +289,7 @@ export default function ProfilePage() {
               </div>
               <div className="space-y-2">
                 <p className="text-amber-100/60 tracking-[0.2em] font-light italic">
-                  这片星域尚未留下你的光芒
+                  星路漫漫，你尚未留下第一串脚印。
                 </p>
                 <Link 
                   href="/"

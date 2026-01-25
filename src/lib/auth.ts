@@ -45,9 +45,24 @@ export const authOptions: NextAuthOptions = {
     strategy: "jwt",
   },
   callbacks: {
+    async jwt({ token, user }) {
+      if (user) {
+        token.id = user.id;
+        token.name = user.name;
+        // 可以在这里预留 emailVerified 逻辑，传递到 token 中
+        const dbUser = await prisma.user.findUnique({
+          where: { id: user.id },
+          select: { emailVerified: true }
+        });
+        token.emailVerified = dbUser?.emailVerified;
+      }
+      return token;
+    },
     async session({ session, token }) {
       if (token && session.user) {
-        (session.user as any).id = token.sub;
+        (session.user as any).id = token.id;
+        (session.user as any).name = token.name;
+        (session.user as any).emailVerified = token.emailVerified;
       }
       return session;
     },

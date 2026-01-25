@@ -1,0 +1,1 @@
+npx prisma studio 数据库显示
