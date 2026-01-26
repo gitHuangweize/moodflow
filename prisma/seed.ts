@@ -37,6 +37,17 @@ async function main() {
     "生活虽然平凡，但也要过得浪漫。"
   ];
 
+  console.log("正在初始化系统用户...");
+  // 先创建一个种子数据专用的用户，防止外键约束报错
+  const seedUser = await prisma.user.upsert({
+    where: { email: 'seed@hyjlab.cn' },
+    update: {},
+    create: {
+      email: 'seed@hyjlab.cn',
+      name: 'Seed Bot',
+    },
+  });
+  
   console.log("正在填充 30 条模拟数据...");
 
   for (let i = 0; i < 30; i++) {
