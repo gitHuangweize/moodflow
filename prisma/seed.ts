@@ -59,6 +59,7 @@ async function main() {
         content: quotes[i % quotes.length],
         moodTag: moodTags[Math.floor(Math.random() * moodTags.length)],
         isAnonymous: Math.random() > 0.5,
+        authorId: seedUser.id,
         createdAt: randomDate,
         updatedAt: randomDate,
       },
