@@ -1,15 +1,15 @@
 import type { Metadata } from "next";
-import { Noto_Serif_SC } from "next/font/google";
+// import { Noto_Serif_SC } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/components/providers/AuthProvider";
 
-const notoSerifSC = Noto_Serif_SC({ 
-  subsets: ["latin"],
-  weight: ["300", "400", "500", "700"],
-  variable: "--font-noto-serif",
-  display: 'swap',
-  preload: false,
-});
+// const notoSerifSC = Noto_Serif_SC({ 
+//   subsets: ["latin"],
+//   weight: ["300", "400", "500", "700"],
+//   variable: "--font-noto-serif",
+//   display: 'swap',
+//   preload: false,
+// });
 
 export const metadata: Metadata = {
   title: "MoodFlow - 随笔流",
@@ -23,7 +23,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="zh-CN">
-      <body className={`${notoSerifSC.variable} font-serif`}>
+      <body className="font-serif">
         <AuthProvider>
           {children}
         </AuthProvider>
