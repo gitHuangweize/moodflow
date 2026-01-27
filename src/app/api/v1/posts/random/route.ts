@@ -31,11 +31,20 @@ export async function GET() {
       },
     });
 
+    // 即使查询结果为 null，也返回 200（前端可自行展示空状态）
     return NextResponse.json(randomPost);
   } catch (error) {
     console.error("Failed to fetch random post:", error);
+    // 如果是数据库连接问题或 Prisma 错误，仍然返回 500
+    // 但如果是查询结果为空（不应该走到这里），返回 null
+    if (error instanceof Error && error.message.includes("Can\'t reach database server")) {
+      return NextResponse.json(
+        { error: "数据库连接失败，请稍后重试" },
+        { status: 503 }
+      );
+    }
     return NextResponse.json(
-      { error: "获取随机随笔失败" },
+      { error: "获取随机随笔失败", details: error instanceof Error ? error.message : String(error) },
       { status: 500 }
     );
   }
