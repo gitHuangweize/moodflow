@@ -31,7 +31,15 @@ export async function GET() {
       },
     });
 
-    return NextResponse.json(randomPost);
+    const response = NextResponse.json(randomPost);
+    
+    // 设置缓存控制：s-maxage=1 (边缘缓存1秒), stale-while-revalidate=9 (1-10秒内后台异步刷新)
+    response.headers.set(
+      'Cache-Control',
+      'public, s-maxage=1, stale-while-revalidate=9'
+    );
+
+    return response;
   } catch (error) {
     console.error("Failed to fetch random post:", error);
     return NextResponse.json(

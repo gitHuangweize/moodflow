@@ -268,7 +268,7 @@ export default function Home() {
   if (!mounted) return null;
 
   return (
-    <div className="min-h-screen text-slate-100 font-serif overflow-hidden selection:bg-amber-200/30">
+    <div className="min-h-screen text-slate-100 font-serif selection:bg-amber-200/30">
       <StarryBackground />
       
       <nav className="fixed top-0 w-full p-4 md:p-6 flex justify-between items-center z-[110] bg-slate-950/20 backdrop-blur-sm">
@@ -304,7 +304,7 @@ export default function Home() {
         </div>
       </nav>
 
-      <main className="relative h-screen flex flex-col items-center justify-center perspective-[2000px] px-4 md:px-0">
+      <main className="relative min-h-screen flex flex-col items-center justify-center perspective-[2000px] px-4 md:px-0">
         <AnimatePresence mode="wait" custom={direction}>
           {viewMode === "random" ? (
             <motion.div 
@@ -615,7 +615,7 @@ export default function Home() {
 
       <AnimatePresence>
         {isComposeOpen && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+          <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4">
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -624,12 +624,12 @@ export default function Home() {
               className="absolute inset-0 bg-slate-950/70 backdrop-blur-xl"
             />
             <motion.div
-              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              initial={{ opacity: 0, scale: 0.95, y: 100 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="relative w-full max-w-lg bg-slate-900/80 backdrop-blur-3xl border border-white/10 rounded-[2.5rem] shadow-2xl overflow-hidden ring-1 ring-white/5"
+              exit={{ opacity: 0, scale: 0.95, y: 100 }}
+              className="relative w-full max-w-lg h-[90vh] sm:h-auto sm:max-h-[90vh] bg-slate-900/80 backdrop-blur-3xl border-t sm:border border-white/10 rounded-t-[2.5rem] sm:rounded-[2.5rem] shadow-2xl overflow-hidden ring-1 ring-white/5 flex flex-col"
             >
-              <div className="p-8 border-b border-white/5 flex justify-between items-center bg-white/5">
+              <div className="p-6 sm:p-8 border-b border-white/5 flex justify-between items-center bg-white/5 shrink-0">
                 <h3 className="text-xl font-bold text-amber-100 italic tracking-wider">记录当下</h3>
                 <button 
                   onClick={() => setIsComposeOpen(false)}
@@ -638,7 +638,7 @@ export default function Home() {
                   <X size={20} />
                 </button>
               </div>
-              <div className="p-8">
+              <div className="p-6 sm:p-8 overflow-y-auto custom-scrollbar flex-1 pb-32">
                 <textarea
                   value={content}
                   onChange={(e) => setContent(e.target.value)}
@@ -690,25 +690,25 @@ export default function Home() {
                     </motion.div>
                   )}
                 </AnimatePresence>
+              </div>
 
-                <div className="mt-8 flex justify-between items-center">
-                  <button
-                    onClick={handlePolish}
-                    disabled={!content || isPolishing}
-                    className="flex items-center gap-2 px-5 py-2.5 text-amber-200/60 hover:text-amber-200 hover:bg-amber-200/5 rounded-full transition-all disabled:opacity-30 text-sm font-medium tracking-wide"
-                  >
-                    <Sparkles size={16} className={isPolishing ? "animate-spin" : ""} />
-                    <span>{isPolishing ? "星尘聚拢中..." : "AI 润色"}</span>
-                  </button>
-                  <button
-                    onClick={handlePublish}
-                    disabled={!content || isLoading}
-                    className="flex items-center gap-2 px-8 py-3 bg-amber-200 text-slate-900 rounded-full hover:bg-amber-100 hover:scale-105 transition-all shadow-[0_0_20px_rgba(251,191,36,0.2)] font-bold tracking-widest disabled:opacity-30 disabled:hover:scale-100 text-sm"
-                  >
-                    <Send size={16} />
-                    <span>{isLoading ? "发布中..." : "发布"}</span>
-                  </button>
-                </div>
+              <div className="absolute bottom-0 left-0 right-0 p-6 sm:p-8 bg-slate-900/90 backdrop-blur-md border-t border-white/5 flex justify-between items-center pb-[calc(1.5rem+env(safe-area-inset-bottom))] sm:pb-8">
+                <button
+                  onClick={handlePolish}
+                  disabled={!content || isPolishing}
+                  className="flex items-center gap-2 px-5 py-2.5 text-amber-200/60 hover:text-amber-200 hover:bg-amber-200/5 rounded-full transition-all disabled:opacity-30 text-sm font-medium tracking-wide"
+                >
+                  <Sparkles size={16} className={isPolishing ? "animate-spin" : ""} />
+                  <span>{isPolishing ? "星尘聚拢中..." : "AI 润色"}</span>
+                </button>
+                <button
+                  onClick={handlePublish}
+                  disabled={!content || isLoading}
+                  className="flex items-center gap-2 px-8 py-3 bg-amber-200 text-slate-900 rounded-full hover:bg-amber-100 hover:scale-105 transition-all shadow-[0_0_20px_rgba(251,191,36,0.2)] font-bold tracking-widest disabled:opacity-30 disabled:hover:scale-100 text-sm"
+                >
+                  <Send size={16} />
+                  <span>{isLoading ? "发布中..." : "发布"}</span>
+                </button>
               </div>
             </motion.div>
           </div>
