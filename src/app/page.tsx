@@ -660,7 +660,7 @@ export default function Home() {
                             filter: "blur(20px)",
                             transition: { duration: 0.8, ease: "circOut" } 
                           }}
-                          className="relative bg-white/5 backdrop-blur-xl p-8 rounded-[2rem] border border-white/5 shadow-lg hover:border-amber-200/20 hover:bg-white/10 transition-all duration-500 group cursor-pointer"
+                          className="relative bg-white/5 backdrop-blur-xl p-8 rounded-[2rem] border border-white/5 shadow-lg hover:border-amber-200/20 hover:bg-white/10 transition-all duration-500 group cursor-pointer flex flex-col h-full"
                         >
                           {/* 更多按钮及下拉菜单 */}
                           {session?.user && (session.user as any).id === post.authorId && (
@@ -722,29 +722,36 @@ export default function Home() {
                             </div>
                           )}
 
-                          <p className="text-lg text-slate-200/90 leading-relaxed mb-6 group-hover:text-slate-100 transition-colors font-serif tracking-wide">
+                          <p className="text-lg text-slate-200/90 leading-relaxed mb-6 group-hover:text-slate-100 transition-colors font-serif tracking-wide flex-grow">
                             {post.content}
                           </p>
-                          <div className="flex justify-between items-center text-[10px] md:text-xs text-amber-200/50 font-medium tracking-wider gap-2">
-                            <div className="flex items-center gap-2">
-                              <span className="bg-amber-200/5 px-2 py-0.5 md:px-3 md:py-1 rounded-full group-hover:bg-amber-200/10 transition-colors shrink-0 truncate max-w-[100px] flex items-center gap-1">
-                                <span>{getMoodIcon(post.moodTag || "感悟")}</span>
-                                {post.moodTag || "感悟"}
+                          <div className="mt-auto flex justify-between items-center text-[10px] md:text-xs text-amber-200/50 font-medium tracking-wider">
+                            {/* 左侧：情绪标签 + 已编辑 */}
+                            <div className="flex items-center gap-2 min-w-0">
+                              <span className="bg-amber-200/5 px-2.5 py-1 rounded-full group-hover:bg-amber-200/10 transition-colors shrink-0 flex items-center gap-1.5 border border-white/5">
+                                <span className="text-xs leading-none">{getMoodIcon(post.moodTag || "感悟")}</span>
+                                <span className="leading-none">{post.moodTag || "感悟"}</span>
                               </span>
                               {post.updatedAt && new Date(post.updatedAt).getTime() > new Date(post.createdAt).getTime() + 1000 && (
-                                <span className="opacity-40 italic font-light tracking-tighter">(已编辑)</span>
+                                <span className="text-[9px] opacity-30 italic font-light shrink-0 leading-none self-center">已编辑</span>
                               )}
                             </div>
-                            <div className="flex items-center gap-4">
-                              <span className="flex items-center gap-1">
-                                <Heart size={12} className="text-rose-400/50" />
-                                {post._count?.likes || 0}
+
+                            {/* 右侧：互动数据 + 时间 */}
+                            <div className="flex items-center gap-4 shrink-0">
+                              <div className="flex items-center gap-4">
+                                <span className="flex items-center gap-1.5 leading-none">
+                                  <Heart size={12} className="text-rose-400/50" />
+                                  <span className="font-sans leading-none">{post._count?.likes || 0}</span>
+                                </span>
+                                <span className="flex items-center gap-1.5 leading-none">
+                                  <MessageSquare size={12} className="text-amber-200/40" />
+                                  <span className="font-sans leading-none">{post._count?.comments || 0}</span>
+                                </span>
+                              </div>
+                              <span className="text-slate-500 font-sans tracking-tight leading-none">
+                                {new Date(post.createdAt).toLocaleDateString('zh-CN', { month: 'numeric', day: 'numeric' })}
                               </span>
-                              <span className="flex items-center gap-1">
-                                <MessageSquare size={12} />
-                                {post._count?.comments || 0}
-                              </span>
-                              <span className="shrink-0 ml-2">{new Date(post.createdAt).toLocaleDateString()}</span>
                             </div>
                           </div>
                         </motion.div>
