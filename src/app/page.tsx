@@ -6,7 +6,7 @@ import { useSession, signOut } from "next-auth/react";
 import { useRef } from "react";
 import { toPng } from 'html-to-image';
 import ShareCard from "@/components/ui/ShareCard";
-import { Shuffle, LayoutGrid, PlusCircle, User, X, Sparkles, Send, Heart, LogOut, LogIn, Stars, MessageSquare, Share2, ChevronLeft, ChevronRight, Check, MoreHorizontal, Trash2, AlertCircle } from "lucide-react";
+import { Shuffle, LayoutGrid, PlusCircle, User, X, Sparkles, Send, Heart, LogOut, LogIn, Stars, MessageSquare, Share2, ChevronLeft, ChevronRight, Check, MoreHorizontal, Trash2, AlertCircle, Pencil } from "lucide-react";
 import StarryBackground from "@/components/ui/StarryBackground";
 import AuthGuardModal from "@/components/ui/AuthGuardModal";
 import UserStatus from "@/components/ui/UserStatus";
@@ -38,6 +38,8 @@ export default function Home() {
   const [isDeleting, setIsDeleting] = useState<string | null>(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
+  const [editingPostId, setEditingPostId] = useState<string | null>(null);
+  const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
 
   const moods = [
     { label: "感悟", icon: "✨" },
@@ -64,14 +66,24 @@ export default function Home() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, []);
 
+  useEffect(() => {
+    if (toast) {
+      const timer = setTimeout(() => setToast(null), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [toast]);
+
   const handlePublish = async () => {
     if (!content) return;
     
     requireAuth(async () => {
       setIsLoading(true);
       try {
-        const res = await fetch("/api/v1/posts", {
-          method: "POST",
+        const url = editingPostId ? `/api/v1/posts/${editingPostId}` : "/api/v1/posts";
+        const method = editingPostId ? "PATCH" : "POST";
+        
+        const res = await fetch(url, {
+          method,
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             content,
@@ -80,13 +92,35 @@ export default function Home() {
           }),
         });
         if (res.ok) {
+          const updatedPostData = await res.json();
           setContent("");
           setPolishedSuggestions([]);
           setCurrentSuggestionIndex(0);
           setSelectedMood("感悟");
           setIsComposeOpen(false);
-          fetchRandomPost();
-          if (viewMode === "feed") fetchFeed();
+          setEditingPostId(null);
+          
+          if (editingPostId) {
+            setToast({ message: "修改成功", type: "success" });
+            // 更新瀑布流中的数据
+            setPosts(prev => prev.map(p => p.id === editingPostId ? { 
+              ...p, 
+              content: updatedPostData.content, 
+              moodTag: updatedPostData.moodTag,
+              updatedAt: updatedPostData.updatedAt 
+            } : p));
+            // 如果当前随机展示的是这一条，也更新
+            if (currentPost?.id === editingPostId) {
+              setCurrentPost(prev => prev ? {
+                ...prev,
+                content: updatedPostData.content,
+                moodTag: updatedPostData.moodTag
+              } : null);
+            }
+          } else {
+            fetchRandomPost();
+            if (viewMode === "feed") fetchFeed();
+          }
         }
       } catch (error) {
         console.error("Failed to publish:", error);
@@ -654,6 +688,20 @@ export default function Home() {
                                       <button
                                         onClick={(e) => {
                                           e.stopPropagation();
+                                          setEditingPostId(post.id);
+                                          setContent(post.content);
+                                          setSelectedMood(post.moodTag || "感悟");
+                                          setIsComposeOpen(true);
+                                          setActiveMenuId(null);
+                                        }}
+                                        className="w-full px-4 py-2.5 text-left text-sm font-bold text-slate-700 hover:bg-slate-50 transition-colors flex items-center gap-2"
+                                      >
+                                        <Pencil size={14} />
+                                        编辑
+                                      </button>
+                                      <button
+                                        onClick={(e) => {
+                                          e.stopPropagation();
                                           setDeleteConfirmId(post.id);
                                           setActiveMenuId(null);
                                         }}
@@ -683,6 +731,9 @@ export default function Home() {
                                 <span>{getMoodIcon(post.moodTag || "感悟")}</span>
                                 {post.moodTag || "感悟"}
                               </span>
+                              {post.updatedAt && new Date(post.updatedAt).getTime() > new Date(post.createdAt).getTime() + 1000 && (
+                                <span className="opacity-40 italic font-light tracking-tighter">(已编辑)</span>
+                              )}
                             </div>
                             <div className="flex items-center gap-4">
                               <span className="flex items-center gap-1">
@@ -716,10 +767,19 @@ export default function Home() {
         moodIcon={currentPost?.moodTag ? getMoodIcon(currentPost.moodTag) : undefined}
       />
 
-      <AuthGuardModal 
-        isOpen={isAuthModalOpen} 
-        onClose={() => setIsAuthModalOpen(false)} 
-      />
+      <AnimatePresence>
+        {toast && (
+          <motion.div
+            initial={{ opacity: 0, y: 50, scale: 0.9 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 50, scale: 0.9 }}
+            className="fixed bottom-24 left-1/2 -translate-x-1/2 z-[300] px-6 py-3 bg-slate-900/90 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl flex items-center gap-3"
+          >
+            <div className={`w-2 h-2 rounded-full ${toast.type === "success" ? "bg-emerald-400 shadow-[0_0_10px_rgba(52,211,153,0.5)]" : "bg-rose-400 shadow-[0_0_10px_rgba(251,113,133,0.5)]"}`} />
+            <span className="text-sm font-medium text-slate-100 tracking-wide">{toast.message}</span>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* 全局删除确认弹窗 */}
       <AnimatePresence>
@@ -787,9 +847,17 @@ export default function Home() {
               className="relative w-full max-w-lg h-[90vh] sm:h-auto sm:max-h-[90vh] bg-slate-900/80 backdrop-blur-3xl border-t sm:border border-white/10 rounded-t-[2.5rem] sm:rounded-[2.5rem] shadow-2xl overflow-hidden ring-1 ring-white/5 flex flex-col"
             >
               <div className="p-6 sm:p-8 border-b border-white/5 flex justify-between items-center bg-white/5 shrink-0">
-                <h3 className="text-xl font-bold text-amber-100 italic tracking-wider">记录当下</h3>
+                <h3 className="text-xl font-bold text-amber-100 italic tracking-wider">
+                  {editingPostId ? "编辑往事" : "记录当下"}
+                </h3>
                 <button 
-                  onClick={() => setIsComposeOpen(false)}
+                  onClick={() => {
+                    setIsComposeOpen(false);
+                    setEditingPostId(null);
+                    setContent("");
+                    setSelectedMood("感悟");
+                    setPolishedSuggestions([]);
+                  }}
                   className="p-2 hover:bg-white/10 rounded-full transition-colors text-slate-400 hover:text-slate-100"
                 >
                   <X size={20} />
@@ -914,7 +982,7 @@ export default function Home() {
                   className="flex items-center gap-2 px-8 py-3 bg-amber-200 text-slate-900 rounded-full hover:bg-amber-100 hover:scale-105 transition-all shadow-[0_0_20px_rgba(251,191,36,0.2)] font-bold tracking-widest disabled:opacity-30 disabled:hover:scale-100 text-sm"
                 >
                   <Send size={16} />
-                  <span>{isLoading ? "发布中..." : "发布"}</span>
+                  <span>{isLoading ? "处理中..." : (editingPostId ? "保存修改" : "发布")}</span>
                 </button>
               </div>
             </motion.div>
