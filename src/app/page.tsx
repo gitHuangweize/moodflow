@@ -6,7 +6,7 @@ import { useSession, signOut } from "next-auth/react";
 import { useRef } from "react";
 import { toPng } from 'html-to-image';
 import ShareCard from "@/components/ui/ShareCard";
-import { Shuffle, LayoutGrid, PlusCircle, User, X, Sparkles, Send, Heart, LogOut, LogIn, Stars, MessageSquare, Share2, ChevronLeft, ChevronRight, Check } from "lucide-react";
+import { Shuffle, LayoutGrid, PlusCircle, User, X, Sparkles, Send, Heart, LogOut, LogIn, Stars, MessageSquare, Share2, ChevronLeft, ChevronRight, Check, MoreHorizontal, Trash2, AlertCircle } from "lucide-react";
 import StarryBackground from "@/components/ui/StarryBackground";
 import AuthGuardModal from "@/components/ui/AuthGuardModal";
 import UserStatus from "@/components/ui/UserStatus";
@@ -35,6 +35,9 @@ export default function Home() {
   const shareCardRef = useRef<HTMLDivElement>(null);
   const [direction, setDirection] = useState(1);
   const [posts, setPosts] = useState<any[]>([]);
+  const [isDeleting, setIsDeleting] = useState<string | null>(null);
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
 
   const moods = [
     { label: "感悟", icon: "✨" },
@@ -48,6 +51,18 @@ export default function Home() {
   const getMoodIcon = (tag: string) => {
     return moods.find(m => m.label === tag)?.icon || "✨";
   };
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setIsComposeOpen(false);
+        setDeleteConfirmId(null);
+        setActiveMenuId(null);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
 
   const handlePublish = async () => {
     if (!content) return;
@@ -186,6 +201,8 @@ export default function Home() {
           if (currentPost && currentPost.id === postId) {
             setCurrentPost({ ...currentPost, likesCount: data.count });
           }
+          // 同步更新瀑布流中的点赞数
+          setPosts(prev => prev.map(p => p.id === postId ? { ...p, _count: { ...p._count, likes: data.count } } : p));
         }
       } catch (error) {
         console.error("Failed to like:", error);
@@ -193,6 +210,31 @@ export default function Home() {
         setTimeout(() => setIsLiking(false), 600);
       }
     });
+  };
+
+  const handleDelete = async (postId: string) => {
+    setIsDeleting(postId);
+    setDeleteConfirmId(null); // 点击确认后立即关闭弹窗
+    try {
+      const res = await fetch(`/api/v1/posts/${postId}`, { method: "DELETE" });
+      if (res.ok) {
+        // 延迟移除，让消失动画播完
+        setTimeout(() => {
+          setPosts(prev => prev.filter(p => p.id !== postId));
+          if (currentPost?.id === postId) {
+            fetchRandomPost();
+          }
+          setIsDeleting(null);
+        }, 800);
+      } else {
+        const data = await res.json();
+        alert(data.error || "删除失败");
+        setIsDeleting(null);
+      }
+    } catch (error) {
+      console.error("Failed to delete:", error);
+      setIsDeleting(null);
+    }
   };
 
   const handleExport = async () => {
@@ -568,32 +610,95 @@ export default function Home() {
                   </motion.div>
                 ) : (
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {posts.map((post) => (
-                      <div key={post.id} className="bg-white/5 backdrop-blur-xl p-8 rounded-[2rem] border border-white/5 shadow-lg hover:border-amber-200/20 hover:bg-white/10 transition-all duration-500 group cursor-pointer">
-                        <p className="text-lg text-slate-200/90 leading-relaxed mb-6 group-hover:text-slate-100 transition-colors font-serif tracking-wide">
-                          {post.content}
-                        </p>
-                        <div className="flex justify-between items-center text-[10px] md:text-xs text-amber-200/50 font-medium tracking-wider gap-2">
-                          <div className="flex items-center gap-2">
-                            <span className="bg-amber-200/5 px-2 py-0.5 md:px-3 md:py-1 rounded-full group-hover:bg-amber-200/10 transition-colors shrink-0 truncate max-w-[100px] flex items-center gap-1">
-                              <span>{getMoodIcon(post.moodTag || "感悟")}</span>
-                              {post.moodTag || "感悟"}
-                            </span>
+                    <AnimatePresence mode="popLayout">
+                      {posts.map((post) => (
+                          <motion.div
+                          key={post.id}
+                          layout
+                          initial={{ opacity: 0, scale: 0.9 }}
+                          animate={{ 
+                            opacity: isDeleting === post.id ? 0.5 : 1, 
+                            scale: isDeleting === post.id ? 0.98 : 1,
+                          }}
+                          exit={{ 
+                            opacity: 0, 
+                            scale: 0.5, 
+                            filter: "blur(20px)",
+                            transition: { duration: 0.8, ease: "circOut" } 
+                          }}
+                          className="relative bg-white/5 backdrop-blur-xl p-8 rounded-[2rem] border border-white/5 shadow-lg hover:border-amber-200/20 hover:bg-white/10 transition-all duration-500 group cursor-pointer"
+                        >
+                          {/* 更多按钮及下拉菜单 */}
+                          {session?.user && (session.user as any).id === post.authorId && (
+                            <div className="absolute top-4 right-4 z-30">
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setActiveMenuId(activeMenuId === post.id ? null : post.id);
+                                }}
+                                className="p-2 text-slate-400 hover:text-amber-200 hover:bg-white/10 rounded-full transition-all"
+                              >
+                                <MoreHorizontal size={20} />
+                              </button>
+
+                              <AnimatePresence>
+                                {activeMenuId === post.id && (
+                                  <>
+                                    <motion.div
+                                      initial={{ opacity: 0, scale: 0.95, y: -10 }}
+                                      animate={{ opacity: 1, scale: 1, y: 0 }}
+                                      exit={{ opacity: 0, scale: 0.95, y: -10 }}
+                                      className="absolute right-0 mt-2 w-32 py-2 bg-white/80 backdrop-blur-md rounded-2xl shadow-2xl border border-white/20 z-40 overflow-hidden"
+                                      onClick={(e) => e.stopPropagation()}
+                                    >
+                                      <button
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          setDeleteConfirmId(post.id);
+                                          setActiveMenuId(null);
+                                        }}
+                                        className="w-full px-4 py-2.5 text-left text-sm font-bold text-rose-500 hover:bg-rose-50 transition-colors flex items-center gap-2"
+                                      >
+                                        <Trash2 size={14} />
+                                        删除
+                                      </button>
+                                    </motion.div>
+                                    {/* 透明遮罩用于点击外部关闭 */}
+                                    <div 
+                                      className="fixed inset-0 z-30" 
+                                      onClick={() => setActiveMenuId(null)}
+                                    />
+                                  </>
+                                )}
+                              </AnimatePresence>
+                            </div>
+                          )}
+
+                          <p className="text-lg text-slate-200/90 leading-relaxed mb-6 group-hover:text-slate-100 transition-colors font-serif tracking-wide">
+                            {post.content}
+                          </p>
+                          <div className="flex justify-between items-center text-[10px] md:text-xs text-amber-200/50 font-medium tracking-wider gap-2">
+                            <div className="flex items-center gap-2">
+                              <span className="bg-amber-200/5 px-2 py-0.5 md:px-3 md:py-1 rounded-full group-hover:bg-amber-200/10 transition-colors shrink-0 truncate max-w-[100px] flex items-center gap-1">
+                                <span>{getMoodIcon(post.moodTag || "感悟")}</span>
+                                {post.moodTag || "感悟"}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-4">
+                              <span className="flex items-center gap-1">
+                                <Heart size={12} className="text-rose-400/50" />
+                                {post._count?.likes || 0}
+                              </span>
+                              <span className="flex items-center gap-1">
+                                <MessageSquare size={12} />
+                                {post._count?.comments || 0}
+                              </span>
+                              <span className="shrink-0 ml-2">{new Date(post.createdAt).toLocaleDateString()}</span>
+                            </div>
                           </div>
-                          <div className="flex items-center gap-4">
-                            <span className="flex items-center gap-1">
-                              <Heart size={12} className="text-rose-400/50" />
-                              {post._count?.likes || 0}
-                            </span>
-                            <span className="flex items-center gap-1">
-                              <MessageSquare size={12} />
-                              {post._count?.comments || 0}
-                            </span>
-                            <span className="shrink-0 ml-2">{new Date(post.createdAt).toLocaleDateString()}</span>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
+                        </motion.div>
+                      ))}
+                    </AnimatePresence>
                   </div>
                 )}
               </div>
@@ -615,6 +720,55 @@ export default function Home() {
         isOpen={isAuthModalOpen} 
         onClose={() => setIsAuthModalOpen(false)} 
       />
+
+      {/* 全局删除确认弹窗 */}
+      <AnimatePresence>
+        {deleteConfirmId && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[200] bg-slate-950/60 backdrop-blur-md flex flex-col items-center justify-center p-6 text-center"
+            onClick={() => setDeleteConfirmId(null)}
+          >
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="bg-slate-900/90 border border-white/10 rounded-[2.5rem] p-10 shadow-2xl max-w-[320px] relative overflow-hidden ring-1 ring-white/10"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-rose-500/50 to-transparent" />
+              
+              <div className="mb-6 relative">
+                <div className="absolute inset-0 blur-2xl bg-rose-500/20 rounded-full" />
+                <AlertCircle className="text-rose-400 mx-auto relative z-10" size={48} strokeWidth={1.5} />
+              </div>
+              
+              <h3 className="text-xl font-bold text-slate-100 mb-2 tracking-wider">删除随笔</h3>
+              <p className="text-slate-400 text-sm mb-10 leading-relaxed font-sans">
+                确定要让这段星光消散吗？<br />此操作无法撤销。
+              </p>
+              
+              <div className="flex flex-col gap-3">
+                <button
+                  onClick={() => handleDelete(deleteConfirmId)}
+                  disabled={!!isDeleting}
+                  className="w-full py-4 rounded-2xl bg-rose-500 text-white text-sm font-bold hover:bg-rose-600 active:scale-[0.98] transition-all shadow-lg shadow-rose-500/20 disabled:opacity-50"
+                >
+                  {isDeleting === deleteConfirmId ? "消散中..." : "确认删除"}
+                </button>
+                <button
+                  onClick={() => setDeleteConfirmId(null)}
+                  className="w-full py-4 rounded-2xl bg-white/5 border border-white/10 text-slate-400 text-sm font-medium hover:text-slate-100 hover:bg-white/10 hover:border-white/20 transition-all"
+                >
+                  取消
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <AnimatePresence>
         {isComposeOpen && (
