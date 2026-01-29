@@ -12,9 +12,9 @@ export async function POST(request: Request) {
       );
     }
 
-    const refinedContent = await refineText(content);
+    const suggestions = await refineText(content);
 
-    return NextResponse.json({ refinedContent });
+    return NextResponse.json({ suggestions });
   } catch (error) {
     console.error("AI refinement failed:", error);
     return NextResponse.json(

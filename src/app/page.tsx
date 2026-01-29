@@ -6,7 +6,7 @@ import { useSession, signOut } from "next-auth/react";
 import { useRef } from "react";
 import { toPng } from 'html-to-image';
 import ShareCard from "@/components/ui/ShareCard";
-import { Shuffle, LayoutGrid, PlusCircle, User, X, Sparkles, Send, Heart, LogOut, LogIn, Stars, MessageSquare, Share2 } from "lucide-react";
+import { Shuffle, LayoutGrid, PlusCircle, User, X, Sparkles, Send, Heart, LogOut, LogIn, Stars, MessageSquare, Share2, ChevronLeft, ChevronRight, Check } from "lucide-react";
 import StarryBackground from "@/components/ui/StarryBackground";
 import AuthGuardModal from "@/components/ui/AuthGuardModal";
 import UserStatus from "@/components/ui/UserStatus";
@@ -21,7 +21,8 @@ export default function Home() {
   const [content, setContent] = useState("");
   const [selectedMood, setSelectedMood] = useState("感悟");
   const [isPolishing, setIsPolishing] = useState(false);
-  const [polishedContent, setPolishedContent] = useState("");
+  const [polishedSuggestions, setPolishedSuggestions] = useState<{style: string, content: string}[]>([]);
+  const [currentSuggestionIndex, setCurrentSuggestionIndex] = useState(0);
   const [currentPost, setCurrentPost] = useState<{ id: string; content: string; authorName?: string; moodTag?: string; likesCount: number; commentsCount?: number } | null>(null);
   const [comments, setComments] = useState<any[]>([]);
   const [isCommentsOpen, setIsCommentsOpen] = useState(false);
@@ -65,7 +66,8 @@ export default function Home() {
         });
         if (res.ok) {
           setContent("");
-          setPolishedContent("");
+          setPolishedSuggestions([]);
+          setCurrentSuggestionIndex(0);
           setSelectedMood("感悟");
           setIsComposeOpen(false);
           fetchRandomPost();
@@ -221,7 +223,8 @@ export default function Home() {
   const handlePolish = async () => {
     if (!content || isPolishing) return;
     setIsPolishing(true);
-    setPolishedContent("");
+    setPolishedSuggestions([]);
+    setCurrentSuggestionIndex(0);
     try {
       const res = await fetch("/api/v1/ai/refine", {
         method: "POST",
@@ -230,7 +233,7 @@ export default function Home() {
       });
       if (res.ok) {
         const data = await res.json();
-        setPolishedContent(data.refinedContent);
+        setPolishedSuggestions(data.suggestions || []);
       }
     } catch (error) {
       console.error("Failed to polish content:", error);
@@ -667,32 +670,82 @@ export default function Home() {
                 </div>
                 
                 <AnimatePresence>
-                  {polishedContent && (
+                  {polishedSuggestions.length > 0 && (
                     <motion.div
                       initial={{ opacity: 0, height: 0 }}
                       animate={{ opacity: 1, height: "auto" }}
                       exit={{ opacity: 0, height: 0 }}
-                      className="mt-6 p-6 bg-amber-200/5 border border-amber-200/10 text-amber-100/90 rounded-3xl text-base italic overflow-hidden"
+                      className="mt-6 flex flex-col"
                     >
-                      <div className="flex items-center gap-2 mb-3 font-bold text-amber-200/80 text-sm tracking-widest uppercase">
-                        <Sparkles size={14} /> AI 润色建议
+                      <div className="flex items-center justify-between mb-4 px-2">
+                        <div className="flex items-center gap-2 font-bold text-amber-200/80 text-sm tracking-widest uppercase">
+                          <Sparkles size={14} /> AI 润色建议 ({currentSuggestionIndex + 1}/5)
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => setCurrentSuggestionIndex(prev => (prev > 0 ? prev - 1 : 4))}
+                            className="p-1 hover:bg-white/10 rounded-full transition-colors text-amber-200/60"
+                          >
+                            <ChevronLeft size={18} />
+                          </button>
+                          <button
+                            onClick={() => setCurrentSuggestionIndex(prev => (prev < 4 ? prev + 1 : 0))}
+                            className="p-1 hover:bg-white/10 rounded-full transition-colors text-amber-200/60"
+                          >
+                            <ChevronRight size={18} />
+                          </button>
+                        </div>
                       </div>
-                      <p className="font-serif leading-relaxed">{polishedContent}</p>
-                      <button 
-                        onClick={() => {
-                          setContent(polishedContent);
-                          setPolishedContent("");
-                        }}
-                        className="mt-4 text-xs font-bold underline decoration-1 underline-offset-4 hover:text-amber-300 transition-colors block tracking-wider opacity-70 hover:opacity-100"
-                      >
-                        采用建议
-                      </button>
+
+                      <div className="relative h-40">
+                        <AnimatePresence mode="wait">
+                          <motion.div
+                            key={currentSuggestionIndex}
+                            initial={{ opacity: 0, x: 20 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            exit={{ opacity: 0, x: -20 }}
+                            transition={{ duration: 0.3, ease: "easeInOut" }}
+                            className="absolute inset-0 p-6 bg-white/10 backdrop-blur-md border border-white/10 text-amber-100/90 rounded-3xl text-base italic flex flex-col justify-between"
+                          >
+                            <p className="font-serif leading-relaxed line-clamp-3">
+                              {polishedSuggestions[currentSuggestionIndex]?.content}
+                            </p>
+                            <div className="flex justify-between items-center mt-2">
+                              <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-200/10 text-amber-200/60 border border-amber-200/10">
+                                {polishedSuggestions[currentSuggestionIndex]?.style}
+                              </span>
+                              <button
+                                onClick={() => {
+                                  setContent(polishedSuggestions[currentSuggestionIndex].content);
+                                  setPolishedSuggestions([]);
+                                }}
+                                className="flex items-center gap-1.5 px-3 py-1 bg-amber-200/20 hover:bg-amber-200/30 text-amber-200 rounded-full text-xs font-bold transition-all border border-amber-200/20"
+                              >
+                                <Check size={12} />
+                                采用建议
+                              </button>
+                            </div>
+                          </motion.div>
+                        </AnimatePresence>
+                      </div>
+
+                      <div className="flex justify-center gap-1.5 mt-4">
+                        {polishedSuggestions.map((_, i) => (
+                          <button
+                            key={i}
+                            onClick={() => setCurrentSuggestionIndex(i)}
+                            className={`w-1.5 h-1.5 rounded-full transition-all ${
+                              currentSuggestionIndex === i ? "bg-amber-300 w-3" : "bg-white/20"
+                            }`}
+                          />
+                        ))}
+                      </div>
                     </motion.div>
                   )}
                 </AnimatePresence>
               </div>
 
-              <div className="absolute bottom-0 left-0 right-0 p-6 sm:p-8 bg-slate-900/90 backdrop-blur-md border-t border-white/5 flex justify-between items-center pb-[calc(1.5rem+env(safe-area-inset-bottom))] sm:pb-8">
+              <div className="sticky bottom-0 left-0 right-0 p-6 sm:p-8 bg-slate-900/90 backdrop-blur-md border-t border-white/5 flex justify-between items-center pb-[calc(1.5rem+env(safe-area-inset-bottom))] sm:pb-8 z-10">
                 <button
                   onClick={handlePolish}
                   disabled={!content || isPolishing}

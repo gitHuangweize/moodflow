@@ -1,5 +1,7 @@
 
-export async function callDeepSeek(messages: { role: string; content: string }[], temperature = 0.7) {
+import { AI_PROMPTS } from "@/config/ai-prompts";
+
+export async function callDeepSeek(messages: { role: string; content: string }[], temperature = 0.7, jsonMode = false) {
   const apiKey = process.env.DEEPSEEK_API_KEY;
   const apiBase = process.env.DEEPSEEK_API_BASE || "https://api.deepseek.com/v1";
 
@@ -20,6 +22,7 @@ export async function callDeepSeek(messages: { role: string; content: string }[]
         messages,
         temperature,
         max_tokens: 1000,
+        response_format: jsonMode ? { type: "json_object" } : undefined,
       }),
     });
 
@@ -37,23 +40,27 @@ export async function callDeepSeek(messages: { role: string; content: string }[]
 }
 
 export async function analyzeMood(content: string) {
-  const prompt = `分析以下用户输入的内容，从“感悟、治愈、迷茫、喜悦、孤独”中选择一个最贴切的词作为情绪标签。只返回这一个词，不要有任何解释：\n\n${content}`;
-  
   const result = await callDeepSeek([
-    { role: "system", content: "你是一个情绪分析专家，擅长从文字中精准捕捉情感色彩。" },
-    { role: "user", content: prompt }
+    { role: "system", content: AI_PROMPTS.MOOD_ANALYSIS.SYSTEM },
+    { role: "user", content: AI_PROMPTS.MOOD_ANALYSIS.USER(content) }
   ], 0.3);
 
   return result?.trim() || "感悟";
 }
 
 export async function refineText(content: string) {
-  const prompt = `请将以下文字润色得更具文学感、富有诗意且简短。保持原意，但让表达更优美：\n\n${content}`;
-  
   const result = await callDeepSeek([
-    { role: "system", content: "你是一个文学素养极高的诗人，擅长精炼且富有张力的表达。" },
-    { role: "user", content: prompt }
-  ], 0.8);
+    { role: "system", content: AI_PROMPTS.REFINE_TEXT.SYSTEM },
+    { role: "user", content: AI_PROMPTS.REFINE_TEXT.USER(content) }
+  ], 0.8, true);
 
-  return result?.trim() || content;
+  if (!result) return [];
+  
+  try {
+    const parsed = JSON.parse(result);
+    return Array.isArray(parsed) ? parsed : (parsed.suggestions || []);
+  } catch (error) {
+    console.error("Failed to parse AI response:", error);
+    return [];
+  }
 }
