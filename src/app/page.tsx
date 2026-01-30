@@ -1,5 +1,6 @@
 "use client";
 import Link from 'next/link';
+import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useSession, signOut } from "next-auth/react";
@@ -13,6 +14,7 @@ import UserStatus from "@/components/ui/UserStatus";
 import { useRequireAuth } from "@/hooks/useRequireAuth";
 
 export default function Home() {
+  const router = useRouter();
   const { data: session } = useSession();
   const { requireAuth, isAuthModalOpen, setIsAuthModalOpen } = useRequireAuth();
   const [viewMode, setViewMode] = useState<"random" | "feed">("random");
@@ -363,12 +365,22 @@ export default function Home() {
             <button onClick={() => setViewMode("random")} className={`p-2.5 rounded-full transition-all duration-300 ${viewMode === "random" ? "bg-amber-300 text-slate-900 shadow-[0_0_20px_rgba(251,191,36,0.4)] scale-110" : "hover:bg-white/10 text-slate-400 hover:text-slate-100"}`} title="沉浸模式"><Shuffle size={18} strokeWidth={2.5} /></button>
             <button onClick={() => setViewMode("feed")} className={`p-2.5 rounded-full transition-all duration-300 ${viewMode === "feed" ? "bg-amber-300 text-slate-900 shadow-[0_0_20px_rgba(251,191,36,0.4)] scale-110" : "hover:bg-white/10 text-slate-400 hover:text-slate-100"}`} title="卡片瀑布流"><LayoutGrid size={18} strokeWidth={2.5} /></button>
             <div className="w-px h-5 bg-white/10 mx-1" />
-            <button onClick={() => setIsComposeOpen(true)} className="p-2.5 hover:bg-white/10 rounded-full transition-all text-amber-200/80 hover:text-amber-300 hover:scale-110"><PlusCircle size={20} /></button>
+            <button 
+              onClick={() => requireAuth(() => setIsComposeOpen(true))} 
+              className="p-2.5 hover:bg-white/10 rounded-full transition-all text-amber-200/80 hover:text-amber-300 hover:scale-110"
+            >
+              <PlusCircle size={20} />
+            </button>
           </div>
           
-          <UserStatus onLoginClick={() => setIsAuthModalOpen(true)} />
+          <UserStatus onLoginClick={() => router.push("/auth/signin")} />
         </div>
       </nav>
+
+      <AuthGuardModal 
+        isOpen={isAuthModalOpen} 
+        onClose={() => setIsAuthModalOpen(false)} 
+      />
 
       <nav className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[100] md:hidden">
         <div className="flex gap-6 items-center px-6 py-3 bg-slate-900/40 backdrop-blur-2xl rounded-full border border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.4)] ring-1 ring-white/5">
@@ -422,7 +434,7 @@ export default function Home() {
                       </p>
                     </div>
                     <button
-                      onClick={() => setIsComposeOpen(true)}
+                      onClick={() => requireAuth(() => setIsComposeOpen(true))}
                       className="mt-8 px-10 py-4 bg-amber-300/10 hover:bg-amber-300/20 text-amber-200 rounded-full border border-amber-300/30 transition-all group overflow-hidden relative"
                     >
                       <span className="relative z-10 flex items-center gap-3 font-bold tracking-[0.2em]">
@@ -839,7 +851,7 @@ export default function Home() {
 
       <AnimatePresence>
         {isComposeOpen && (
-          <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4">
+          <div className="fixed inset-0 z-[150] flex items-end sm:items-center justify-center p-0 sm:p-4">
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
